@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use chrono::{DateTime, NaiveDateTime, Utc};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -28,6 +30,9 @@ pub enum ReservationStatus {
     Cancelled,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct ParseReservationStatusError;
+
 impl ReservationStatus {
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -35,12 +40,16 @@ impl ReservationStatus {
             Self::Cancelled => "cancelled",
         }
     }
+}
 
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for ReservationStatus {
+    type Err = ParseReservationStatusError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "active" => Some(Self::Active),
-            "cancelled" => Some(Self::Cancelled),
-            _ => None,
+            "active" => Ok(Self::Active),
+            "cancelled" => Ok(Self::Cancelled),
+            _ => Err(ParseReservationStatusError),
         }
     }
 }
@@ -76,11 +85,8 @@ impl Reservation {
     }
 
     pub fn time_slot(&self) -> TimeSlot {
-        TimeSlot::new(
-            self.start_time.and_utc(),
-            self.end_time.and_utc(),
-        )
-        .expect("Database should contain valid time slots")
+        TimeSlot::new(self.start_time.and_utc(), self.end_time.and_utc())
+            .expect("Database should contain valid time slots")
     }
 
     pub fn is_active(&self) -> bool {
