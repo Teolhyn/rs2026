@@ -1,0 +1,14 @@
+name: "Rust: Cargo Clippy"
+
+on:
+  push:
+    branches-ignore:
+      - main
+      
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: cargo clippy 
+    steps:
+      - uses: actions/checkout@v3
+      - uses: qernal/github-actions-rust-clippy@v2.0.2
