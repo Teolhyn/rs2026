@@ -6,9 +6,9 @@ on:
       - main
       
 jobs:
-  lint:
+  clippy_check:
     runs-on: ubuntu-latest
-    name: cargo clippy 
     steps:
-      - uses: actions/checkout@v3
-      - uses: qernal/github-actions-rust-clippy@v2.0.2
+      - uses: actions/checkout@v6
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features
