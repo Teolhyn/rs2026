@@ -76,11 +76,8 @@ impl Reservation {
     }
 
     pub fn time_slot(&self) -> TimeSlot {
-        TimeSlot::new(
-            self.start_time.and_utc(),
-            self.end_time.and_utc(),
-        )
-        .expect("Database should contain valid time slots")
+        TimeSlot::new(self.start_time.and_utc(), self.end_time.and_utc())
+            .expect("Database should contain valid time slots")
     }
 
     pub fn is_active(&self) -> bool {

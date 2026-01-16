@@ -33,8 +33,4 @@ diesel::table! {
 diesel::joinable!(reservations -> rooms (room_id));
 diesel::joinable!(reservations -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    reservations,
-    rooms,
-    users,
-);
+diesel::allow_tables_to_appear_in_same_query!(reservations, rooms, users,);
