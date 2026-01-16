@@ -1,0 +1,16 @@
+name: "Rust: Cargo Test"
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+jobs:
+  test:
+    name: cargo test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo test --all-features
+
