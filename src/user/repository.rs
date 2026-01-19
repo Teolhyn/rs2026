@@ -1,13 +1,15 @@
 use diesel::prelude::*;
 
-use crate::common::error::AppError;
 use crate::db::schema::users;
 use crate::db::DbPool;
+use crate::{common::error::AppError, user::types::Email};
 
 use super::types::{NewUser, User, UserId};
 
-pub fn create_user(pool: &DbPool, email: &str, name: &str) -> Result<User, AppError> {
+pub fn create_user(pool: &DbPool, email: &Email, name: &str) -> Result<User, AppError> {
     let mut conn = pool.get().map_err(|e| AppError::Database(e.to_string()))?;
+
+    let email = email.as_str();
 
     let new_user = NewUser { email, name };
 

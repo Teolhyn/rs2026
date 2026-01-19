@@ -4,6 +4,7 @@ use axum::{Json, Router};
 
 use crate::common::error::AppError;
 use crate::db::DbPool;
+use crate::user::types::Email;
 
 use super::repository;
 use super::types::{CreateUserRequest, UserId, UserResponse};
@@ -18,7 +19,8 @@ async fn create_user(
     State(pool): State<DbPool>,
     Json(req): Json<CreateUserRequest>,
 ) -> Result<Json<UserResponse>, AppError> {
-    let user = repository::create_user(&pool, &req.email, &req.name)?;
+    let email = Email::parse(&req.email)?;
+    let user = repository::create_user(&pool, &email, &req.name)?;
     Ok(Json(user.into()))
 }
 
