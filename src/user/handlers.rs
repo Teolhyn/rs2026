@@ -12,7 +12,7 @@ use super::types::{CreateUserRequest, UserId, UserResponse};
 pub fn router() -> Router<DbPool> {
     Router::new()
         .route("/users", post(create_user))
-        .route("/users/:user_id", get(get_user))
+        .route("/users/{user_id}", get(get_user))
 }
 
 async fn create_user(
