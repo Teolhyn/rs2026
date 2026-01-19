@@ -4,7 +4,7 @@ use crate::common::error::AppError;
 use crate::db::schema::rooms;
 use crate::db::DbPool;
 
-use super::types::{NewRoom, Room, RoomId};
+use super::types::{NewRoom, Room, RoomFilter, RoomId};
 
 pub fn create_room(pool: &DbPool, name: &str, capacity: i32) -> Result<Room, AppError> {
     let mut conn = pool.get().map_err(|e| AppError::Database(e.to_string()))?;
@@ -28,10 +28,20 @@ pub fn get_room_by_id(pool: &DbPool, room_id: RoomId) -> Result<Room, AppError> 
         .map_err(AppError::from)
 }
 
-pub fn list_rooms(pool: &DbPool) -> Result<Vec<Room>, AppError> {
+pub fn list_rooms(pool: &DbPool, filter: &RoomFilter) -> Result<Vec<Room>, AppError> {
     let mut conn = pool.get().map_err(|e| AppError::Database(e.to_string()))?;
 
-    rooms::table
+    let mut query = rooms::table.into_boxed();
+
+    if let Some(min) = filter.min_capacity {
+        query = query.filter(rooms::capacity.ge(min));
+    }
+
+    if let Some(max) = filter.max_capacity {
+        query = query.filter(rooms::capacity.le(max));
+    }
+
+    query
         .select(Room::as_select())
         .load(&mut conn)
         .map_err(AppError::from)
