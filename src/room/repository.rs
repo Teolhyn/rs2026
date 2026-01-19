@@ -1,6 +1,6 @@
 use diesel::prelude::*;
 
-use crate::common::error::AppError;
+use crate::common::error::{AppError, ValidationError};
 use crate::db::schema::rooms;
 use crate::db::DbPool;
 
@@ -8,6 +8,10 @@ use super::types::{NewRoom, Room, RoomFilter, RoomId};
 
 pub fn create_room(pool: &DbPool, name: &str, capacity: i32) -> Result<Room, AppError> {
     let mut conn = pool.get().map_err(|e| AppError::Database(e.to_string()))?;
+
+    if capacity > 1000 {
+        return Err(AppError::Validation(ValidationError::CapacityTooLarge));
+    }
 
     let new_room = NewRoom { name, capacity };
 
