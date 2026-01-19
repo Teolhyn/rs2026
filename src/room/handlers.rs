@@ -1,4 +1,4 @@
-use axum::extract::State;
+use axum::extract::{Query, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 
@@ -6,7 +6,7 @@ use crate::common::error::AppError;
 use crate::db::DbPool;
 
 use super::repository;
-use super::types::{CreateRoomRequest, RoomResponse};
+use super::types::{CreateRoomRequest, RoomFilter, RoomResponse};
 
 pub fn router() -> Router<DbPool> {
     Router::new()
@@ -22,7 +22,10 @@ async fn create_room(
     Ok(Json(room.into()))
 }
 
-async fn list_rooms(State(pool): State<DbPool>) -> Result<Json<Vec<RoomResponse>>, AppError> {
-    let rooms = repository::list_rooms(&pool)?;
+async fn list_rooms(
+    State(pool): State<DbPool>,
+    Query(filter): Query<RoomFilter>,
+) -> Result<Json<Vec<RoomResponse>>, AppError> {
+    let rooms = repository::list_rooms(&pool, &filter)?;
     Ok(Json(rooms.into_iter().map(RoomResponse::from).collect()))
 }

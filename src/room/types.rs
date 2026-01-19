@@ -56,6 +56,12 @@ pub struct RoomResponse {
     pub created_at: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct RoomFilter {
+    pub min_capacity: Option<i32>,
+    pub max_capacity: Option<i32>,
+}
+
 impl From<Room> for RoomResponse {
     fn from(room: Room) -> Self {
         Self {
