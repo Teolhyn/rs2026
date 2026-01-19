@@ -14,11 +14,11 @@ use super::validation::ValidatedCreateReservation;
 pub fn router() -> Router<DbPool> {
     Router::new()
         .route(
-            "/rooms/:room_id/reservations",
+            "/rooms/{room_id}/reservations",
             post(create_reservation).get(list_reservations),
         )
         .route(
-            "/rooms/:room_id/reservations/:reservation_id",
+            "/rooms/{room_id}/reservations/{reservation_id}",
             delete(cancel_reservation),
         )
 }

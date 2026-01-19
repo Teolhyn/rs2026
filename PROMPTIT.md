@@ -2881,3 +2881,82 @@ Claude:
   Each test module follows the same pattern with an in-memory SQLite
   database and migrations.
 ```
+
+```
+Minä:
+I updated axum and I get: Path segments must not start with
+  `:`. For capture groups, use `{capture}`. If you meant to
+  literally match a segment starting with a colon, call
+  `without_v07_checks` on the router.
+```
+
+```
+Claude:
+⏺ Axum 0.8 changed the path parameter syntax from :param to {param}.
+  Let me find and fix the routes.
+
+⏺ Search(pattern: ":\w+", glob: "**/*.rs", output_mode: "content")
+  ⎿  Found 263 lines (ctrl+o to expand)
+
+⏺ I found the routes. Let me update them to the new Axum 0.8 syntax.
+
+⏺ Update(src/user/handlers.rs)
+  ⎿  File must be read first
+
+⏺ Update(src/reservation/handlers.rs)
+  ⎿  File must be read first
+
+⏺ Update(src/reservation/handlers.rs)
+  ⎿  File must be read first
+
+⏺ Read(src/user/handlers.rs)
+  ⎿  Read 34 lines
+
+⏺ Read(src/reservation/handlers.rs)
+  ⎿  Read 72 lines
+
+⏺ Update(src/user/handlers.rs)
+  ⎿  Added 1 line, removed 1 line
+      12  pub fn router() -> Router<DbPool> {
+      13      Router::new()
+      14          .route("/users", post(create_user))
+      15 -        .route("/users/:user_id", get(get_user))
+      15 +        .route("/users/{user_id}", get(get_user))
+      16  }
+      17
+      18  async fn create_user(
+
+⏺ Update(src/reservation/handlers.rs)
+  ⎿  Added 2 lines, removed 2 lines
+      14  pub fn router() -> Router<DbPool> {
+      15      Router::new()
+      16          .route(
+      17 -            "/rooms/:room_id/reservations",
+      17 +            "/rooms/{room_id}/reservations",
+      18
+          post(create_reservation).get(list_reservations),
+      19          )
+      20          .route(
+      21 -            "/rooms/:room_id/reservations/:
+         -reservation_id",
+      21 +            "/rooms/{room_id}/reservations/{
+         +reservation_id}",
+      22              delete(cancel_reservation),
+      23          )
+      24  }
+
+⏺ Let me verify it compiles.
+
+⏺ Bash(cargo check 2>&1)
+  ⎿     Compiling serde_core v1.0.228
+        Compiling syn v2.0.114
+        Compiling thiserror v2.0.18
+     … +31 lines (ctrl+o to expand)
+
+⏺ Fixed. The Axum 0.8 path parameter syntax changed from :param to
+  {param}. Updated routes:
+
+  - /users/{user_id}
+  - /rooms/{room_id}/reservations
+  - /rooms/{room_id}/reservations/{reservation_id}
+```
