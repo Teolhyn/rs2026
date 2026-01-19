@@ -82,5 +82,51 @@ pub struct TimeSlot {
 
 - Tekoäly ei tehnyt mitään CI ratkaisua, toisaalta tätä en myöskään erikseen pyytänyt.
 - Tekoäly käyttää lähes poikkeuksetta vanhoja versioita joistakin laatikoista (kirjastoista).
+- Tekoälyn ratkaisussa oli potentiaalinen "race condition", koska aikataulujen päällekäisyyden validointi ja kantaan päivitys eivät olleet atomisia (samassa transaktiossa)
+- Validoinnissa tarkastettiin ensin kannasta asioita, eikä halpaa parametrien vertailua.
+- Varaus statuksen fallback arvo oli "Active"
 
 # Mitkä olivat tärkeimmät parannukset, jotka teit tekoälyn tuottamaa koodiin ja miksi?
+
+Tuotteen kannalta tärkeimmät parannukset olivat tuon validoinnin ja päivittämisen siirtäminen samaan transaktioon, etteivät peräkkäiset pyynnöt voi tehdä vahingossa päällekkäistä varausta. Lisäksi varauksen fallback arvon poistaminen. Lisäsin tilalle panikoinnin exceptillä, mutta result tyyppi olisi ollut varmaan parempi. viimeisenä depsujen päivitys koska AI käytti todella vanhoja (ja potentiaalisesti vaarallisia) versioita.
+
+Koodin laadun ja tulevan kehittämisen kannalta tärkein lisäys oli integraatiotestien lisääminen jokaiseen ominaisuuteen. Testien kattavuus nousi huomattavasti:
+
+```sh
+2026-01-19T12:23:10.515069Z  INFO cargo_tarpaulin::report: Coverage Results:
+|| Uncovered Lines:
+|| src/common/error.rs: 59-60, 62, 65, 68, 71, 74, 77, 80, 83, 85-86, 89-91, 94, 99-101, 105-106
+|| src/common/time.rs: 19-21, 23
+|| src/db/mod.rs: 8-10
+|| src/main.rs: 9-10, 12-13, 15-19, 21-22, 25, 27-28
+|| src/reservation/handlers.rs: 14-15, 18, 22, 26, 32-36, 39-40, 43, 47-52, 56, 61, 63-65, 69-70
+|| src/reservation/types.rs: 16-17, 22-23, 48-52, 71-72, 75-76, 79-80, 83-84, 87-88, 92-93, 126, 128-134
+|| src/reservation/validation.rs: 16, 24-25, 29-30, 34, 36-39
+|| src/room/handlers.rs: 11-14, 17, 21-22, 25, 29-30
+|| src/room/types.rs: 11-12, 17-18, 33-34, 66, 68-71
+|| src/user/handlers.rs: 12-15, 18, 22-24, 27, 31-32
+|| src/user/types.rs: 11-12, 17-18, 33-34, 46, 77, 79-82
+|| Tested/Total Lines:
+|| src/common/error.rs: 0/21 +0.00%
+|| src/common/time.rs: 10/14 +28.57%
+|| src/db/mod.rs: 0/3 +0.00%
+|| src/main.rs: 0/14 +0.00%
+|| src/reservation/handlers.rs: 0/26 +0.00%
+|| src/reservation/repository.rs: 52/52 +100.00%
+|| src/reservation/types.rs: 4/33 +12.12%
+|| src/reservation/validation.rs: 0/10 +0.00%
+|| src/room/handlers.rs: 0/10 +0.00%
+|| src/room/repository.rs: 33/33 +100.00%
+|| src/room/types.rs: 0/11 +0.00%
+|| src/user/handlers.rs: 0/11 +0.00%
+|| src/user/repository.rs: 21/21 +100.00%
+|| src/user/types.rs: 5/17 +29.41%
+||
+45.29% coverage, 125/276 lines covered, +42.97% change in coverage
+```
+
+Myös CI putken lisääminen oli tärkeää, jotta koodin tyyli ja laatu pysyy vähintään yhtä hyvänä uusia ominaisuuksia kehittäessä.
+
+# Yhteenveto
+
+Lyhyenä yhteenvetona sanoisin, että tekoäly onnistui rajapinnan kehityksessä hyvin. Toisaalta annoin sille todella tarkat rajat heti alusta alkaen ja käytin hyödyksi Clauden plan moodia. Clauden alkuperäinen tuotos oli koodiltaan ehkä keskimääräistä juniorin tekelettä tasokkaampi, mutta parannettavaa löytyi kuitenkin.
