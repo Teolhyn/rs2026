@@ -81,7 +81,7 @@ impl Reservation {
     }
 
     pub fn status(&self) -> ReservationStatus {
-        ReservationStatus::from_str(&self.status).unwrap_or(ReservationStatus::Active)
+        ReservationStatus::from_str(&self.status).expect("Invalid status in database!")
     }
 
     pub fn time_slot(&self) -> TimeSlot {
