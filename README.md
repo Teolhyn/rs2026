@@ -1,35 +1,3 @@
-## Projektin rakenne
-
-.
-├── ANALYYSI.md // Oma analyysi
-├── PROMPTIT.md // Käytetyt promptit
-└── src
-    ├── common // Yhteinen moduuli
-    │   ├── error.rs
-    │   ├── mod.rs
-    │   └── time.rs
-    ├── db // Tietokantamoduuli
-    │   ├── mod.rs
-    │   └── schema.rs
-    ├── lib.rs
-    ├── main.rs
-    ├── reservation
-    │   ├── handlers.rs // endpointit
-    │   ├── mod.rs
-    │   ├── repository.rs // logiikka
-    │   ├── types.rs // tyypit
-    │   └── validation.rs
-    ├── room
-    │   ├── handlers.rs
-    │   ├── mod.rs
-    │   ├── repository.rs
-    │   └── types.rs
-    └── user
-        ├── handlers.rs
-        ├── mod.rs
-        ├── repository.rs
-        └── types.rs
-
 # Ohjeet käynnistykseen
 
 Jos sinulla ei ole Rustia:
