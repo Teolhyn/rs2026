@@ -20,6 +20,9 @@ impl ValidatedCreateReservation {
         start: DateTime<Utc>,
         end: DateTime<Utc>,
     ) -> Result<Self, AppError> {
+        // Validate time slot (checks start < end and not in past)
+        let time_slot = TimeSlot::new_future(start, end)?;
+
         // Validate room exists
         if !room::repository::room_exists(pool, room_id)? {
             return Err(ValidationError::InvalidRoomId.into());
@@ -29,9 +32,6 @@ impl ValidatedCreateReservation {
         if !user::repository::user_exists(pool, user_id)? {
             return Err(ValidationError::InvalidUserId.into());
         }
-
-        // Validate time slot (checks start < end and not in past)
-        let time_slot = TimeSlot::new_future(start, end)?;
 
         Ok(Self {
             room_id,
