@@ -2,7 +2,7 @@ use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::db::schema::users;
+use crate::{common::error::ValidationError, db::schema::users};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UserId(pub i32);
@@ -32,6 +32,23 @@ pub struct User {
 impl User {
     pub fn user_id(&self) -> UserId {
         UserId(self.id)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Email(String);
+
+impl Email {
+    pub fn parse(value: &str) -> Result<Self, ValidationError> {
+        if value.contains('@') && value.len() <= 254 {
+            Ok(Self(value.to_lowercase()))
+        } else {
+            Err(ValidationError::InvalidEmail)
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
 

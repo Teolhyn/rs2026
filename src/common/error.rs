@@ -32,6 +32,12 @@ pub enum ValidationError {
 
     #[error("Invalid user ID")]
     InvalidUserId,
+
+    #[error("Invalid email")]
+    InvalidEmail,
+
+    #[error("Capacity too large")]
+    CapacityTooLarge,
 }
 
 #[derive(Debug, Error)]
@@ -63,6 +69,12 @@ impl IntoResponse for AppError {
             }
             AppError::Validation(ValidationError::InvalidUserId) => {
                 (StatusCode::BAD_REQUEST, "INVALID_USER_ID")
+            }
+            AppError::Validation(ValidationError::InvalidEmail) => {
+                (StatusCode::BAD_REQUEST, "INVALID_EMAIL")
+            }
+            AppError::Validation(ValidationError::CapacityTooLarge) => {
+                (StatusCode::BAD_REQUEST, "CAPACITY_TOO_LARGE")
             }
             AppError::Conflict(ConflictError::OverlappingReservation) => {
                 (StatusCode::CONFLICT, "OVERLAPPING_RESERVATION")

@@ -1,13 +1,15 @@
 use diesel::prelude::*;
 
-use crate::common::error::AppError;
 use crate::db::schema::users;
 use crate::db::DbPool;
+use crate::{common::error::AppError, user::types::Email};
 
 use super::types::{NewUser, User, UserId};
 
-pub fn create_user(pool: &DbPool, email: &str, name: &str) -> Result<User, AppError> {
+pub fn create_user(pool: &DbPool, email: &Email, name: &str) -> Result<User, AppError> {
     let mut conn = pool.get().map_err(|e| AppError::Database(e.to_string()))?;
+
+    let email = email.as_str();
 
     let new_user = NewUser { email, name };
 
@@ -37,4 +39,63 @@ pub fn user_exists(pool: &DbPool, user_id: UserId) -> Result<bool, AppError> {
     select(exists(users::table.find(user_id.0)))
         .get_result(&mut conn)
         .map_err(AppError::from)
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use diesel::r2d2::{ConnectionManager, Pool};
+    use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+
+    pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
+
+    pub fn test_pool() -> DbPool {
+        let manager = ConnectionManager::<SqliteConnection>::new(":memory:");
+        let pool = Pool::builder().build(manager).unwrap();
+
+        let mut conn = pool.get().unwrap();
+        conn.run_pending_migrations(MIGRATIONS).unwrap();
+
+        pool
+    }
+
+    #[test]
+    fn test_create_user() {
+        let pool = test_pool();
+
+        let email = Email::parse("TEST@TeSt.com").unwrap();
+        let uname = "Test Testson";
+
+        let user = create_user(&pool, &email, uname).unwrap();
+
+        assert_eq!(user.id, 1);
+        assert_eq!(user.email, "test@test.com");
+        assert_eq!(user.name, "Test Testson");
+    }
+
+    #[test]
+    fn test_get_user_by_id() {
+        let pool = test_pool();
+
+        let email = Email::parse("test@example.com").unwrap();
+        let created = create_user(&pool, &email, "Testi Käyttäjä").unwrap();
+
+        let fetched = get_user_by_id(&pool, UserId(created.id)).unwrap();
+
+        assert_eq!(fetched.id, created.id);
+        assert_eq!(fetched.email, "test@example.com");
+        assert_eq!(fetched.name, "Testi Käyttäjä");
+    }
+
+    #[test]
+    fn test_user_exists() {
+        let pool = test_pool();
+
+        let email = Email::parse("test@example.com").unwrap();
+        let user = create_user(&pool, &email, "Testi Käyttäjä").unwrap();
+
+        assert!(user_exists(&pool, UserId(user.id)).unwrap());
+        assert!(!user_exists(&pool, UserId(999)).unwrap());
+    }
 }
