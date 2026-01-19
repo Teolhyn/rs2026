@@ -73,4 +73,29 @@ mod tests {
         assert_eq!(user.email, "test@test.com");
         assert_eq!(user.name, "Test Testson");
     }
+
+    #[test]
+    fn test_get_user_by_id() {
+        let pool = test_pool();
+
+        let email = Email::parse("test@example.com").unwrap();
+        let created = create_user(&pool, &email, "Testi Käyttäjä").unwrap();
+
+        let fetched = get_user_by_id(&pool, UserId(created.id)).unwrap();
+
+        assert_eq!(fetched.id, created.id);
+        assert_eq!(fetched.email, "test@example.com");
+        assert_eq!(fetched.name, "Testi Käyttäjä");
+    }
+
+    #[test]
+    fn test_user_exists() {
+        let pool = test_pool();
+
+        let email = Email::parse("test@example.com").unwrap();
+        let user = create_user(&pool, &email, "Testi Käyttäjä").unwrap();
+
+        assert!(user_exists(&pool, UserId(user.id)).unwrap());
+        assert!(!user_exists(&pool, UserId(999)).unwrap());
+    }
 }
