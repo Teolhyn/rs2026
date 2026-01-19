@@ -18,33 +18,35 @@ pub fn create_reservation(
     let start_time = validated.time_slot.start().naive_utc();
     let end_time = validated.time_slot.end().naive_utc();
 
-    let overlapping_exists: bool = reservations::table
-        .filter(reservations::room_id.eq(validated.room_id.0))
-        .filter(reservations::status.eq(ReservationStatus::Active.as_str()))
-        .filter(reservations::start_time.lt(end_time))
-        .filter(reservations::end_time.gt(start_time))
-        .select(diesel::dsl::count_star())
-        .first::<i64>(&mut conn)
-        .map(|count| count > 0)
-        .map_err(AppError::from)?;
+    conn.exclusive_transaction(|conn| {
+        let overlapping_exists: bool = reservations::table
+            .filter(reservations::room_id.eq(validated.room_id.0))
+            .filter(reservations::status.eq(ReservationStatus::Active.as_str()))
+            .filter(reservations::start_time.lt(end_time))
+            .filter(reservations::end_time.gt(start_time))
+            .select(diesel::dsl::count_star())
+            .first::<i64>(conn)
+            .map(|count| count > 0)
+            .map_err(AppError::from)?;
 
-    if overlapping_exists {
-        return Err(ConflictError::OverlappingReservation.into());
-    }
+        if overlapping_exists {
+            return Err(ConflictError::OverlappingReservation.into());
+        }
 
-    let new_reservation = NewReservation {
-        room_id: validated.room_id.0,
-        user_id: validated.user_id.0,
-        start_time,
-        end_time,
-        status: ReservationStatus::Active.as_str().to_string(),
-    };
+        let new_reservation = NewReservation {
+            room_id: validated.room_id.0,
+            user_id: validated.user_id.0,
+            start_time,
+            end_time,
+            status: ReservationStatus::Active.as_str().to_string(),
+        };
 
-    diesel::insert_into(reservations::table)
-        .values(&new_reservation)
-        .returning(Reservation::as_returning())
-        .get_result(&mut conn)
-        .map_err(AppError::from)
+        diesel::insert_into(reservations::table)
+            .values(&new_reservation)
+            .returning(Reservation::as_returning())
+            .get_result(conn)
+            .map_err(AppError::from)
+    })
 }
 
 pub fn get_reservation_by_id(
