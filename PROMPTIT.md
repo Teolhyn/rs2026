@@ -2361,3 +2361,523 @@ Claude:
 ```
 
 # Osa 2
+
+```
+Minä:
+See how I did the unit test in user/repository.rs. I want you to create basic unit testing for each features repository.
+```
+
+```
+Claude:
+⏺ Let me first look at the unit tests in user/repository.rs to
+  understand the pattern you're using.
+
+⏺ Read(src/user/repository.rs)
+  ⎿  Read 77 lines
+
+⏺ Search(pattern: "src/**/repository.rs")
+  ⎿  Found 3 files (ctrl+o to expand)
+
+⏺ Now let me look at the other repositories to see what functions need
+   testing.
+
+⏺ Read(src/room/repository.rs)
+  ⎿  Read 64 lines
+
+⏺ Read(src/reservation/repository.rs)
+  ⎿  Read 102 lines
+
+⏺ Let me check the types and validation modules to understand the data
+   structures needed for tests.
+
+⏺ Read(src/room/types.rs)
+  ⎿  Read 75 lines
+
+⏺ Read(src/reservation/types.rs)
+  ⎿  Read 138 lines
+
+⏺ Read(src/reservation/validation.rs)
+  ⎿  Read 43 lines
+
+⏺ Let me check the TimeSlot type as well.
+
+⏺ Read(src/common/time.rs)
+  ⎿  Read 76 lines
+
+⏺ Now I have all the information I need. Let me add unit tests to both
+   repositories following the same pattern.
+
+⏺ Update(src/room/repository.rs)
+  ⎿  Added 117 lines
+       61          .get_result(&mut conn)
+       62          .map_err(AppError::from)
+       63  }
+       64 +
+       65 +#[cfg(test)]
+       66 +mod tests {
+       67 +    use super::*;
+       68 +    use diesel::r2d2::{ConnectionManager, Pool};
+       69 +    use diesel::SqliteConnection;
+       70 +    use diesel_migrations::{embed_migrations,
+          +EmbeddedMigrations, MigrationHarness};
+       71 +
+       72 +    pub const MIGRATIONS: EmbeddedMigrations =
+          +embed_migrations!("migrations");
+       73 +
+       74 +    fn test_pool() -> DbPool {
+       75 +        let manager = ConnectionManager::<SqliteCon
+          +nection>::new(":memory:");
+       76 +        let pool =
+          +Pool::builder().build(manager).unwrap();
+       77 +
+       78 +        let mut conn = pool.get().unwrap();
+       79 +
+          +conn.run_pending_migrations(MIGRATIONS).unwrap();
+       80 +
+       81 +        pool
+       82 +    }
+       83 +
+       84 +    #[test]
+       85 +    fn test_create_room() {
+       86 +        let pool = test_pool();
+       87 +
+       88 +        let room = create_room(&pool,
+          +"Neuvotteluhuone A", 10).unwrap();
+       89 +
+       90 +        assert_eq!(room.id, 1);
+       91 +        assert_eq!(room.name, "Neuvotteluhuone A");
+       92 +        assert_eq!(room.capacity, 10);
+       93 +    }
+       94 +
+       95 +    #[test]
+       96 +    fn test_create_room_capacity_too_large() {
+       97 +        let pool = test_pool();
+       98 +
+       99 +        let result = create_room(&pool, "Suuri
+          +sali", 1001);
+      100 +
+      101 +        assert!(matches!(
+      102 +            result,
+      103 +            Err(AppError::Validation(ValidationErro
+          +r::CapacityTooLarge))
+      104 +        ));
+      105 +    }
+      106 +
+      107 +    #[test]
+      108 +    fn test_get_room_by_id() {
+      109 +        let pool = test_pool();
+      110 +
+      111 +        let created = create_room(&pool, "Huone B",
+          + 5).unwrap();
+      112 +        let fetched = get_room_by_id(&pool,
+          +RoomId(created.id)).unwrap();
+      113 +
+      114 +        assert_eq!(fetched.id, created.id);
+      115 +        assert_eq!(fetched.name, "Huone B");
+      116 +    }
+      117 +
+      118 +    #[test]
+      119 +    fn test_list_rooms_no_filter() {
+      120 +        let pool = test_pool();
+      121 +
+      122 +        create_room(&pool, "Huone 1", 5).unwrap();
+      123 +        create_room(&pool, "Huone 2", 10).unwrap();
+      124 +        create_room(&pool, "Huone 3", 15).unwrap();
+      125 +
+      126 +        let filter = RoomFilter {
+      127 +            min_capacity: None,
+      128 +            max_capacity: None,
+      129 +        };
+      130 +        let rooms = list_rooms(&pool,
+          +&filter).unwrap();
+      131 +
+      132 +        assert_eq!(rooms.len(), 3);
+      133 +    }
+      134 +
+      135 +    #[test]
+      136 +    fn test_list_rooms_with_min_capacity() {
+      137 +        let pool = test_pool();
+      138 +
+      139 +        create_room(&pool, "Pieni", 5).unwrap();
+      140 +        create_room(&pool, "Keskikokoinen",
+          +10).unwrap();
+      141 +        create_room(&pool, "Suuri", 20).unwrap();
+      142 +
+      143 +        let filter = RoomFilter {
+      144 +            min_capacity: Some(10),
+      145 +            max_capacity: None,
+      146 +        };
+      147 +        let rooms = list_rooms(&pool,
+          +&filter).unwrap();
+      148 +
+      149 +        assert_eq!(rooms.len(), 2);
+      150 +        assert!(rooms.iter().all(|r| r.capacity >=
+          +10));
+      151 +    }
+      152 +
+      153 +    #[test]
+      154 +    fn test_list_rooms_with_max_capacity() {
+      155 +        let pool = test_pool();
+      156 +
+      157 +        create_room(&pool, "Pieni", 5).unwrap();
+      158 +        create_room(&pool, "Keskikokoinen",
+          +10).unwrap();
+      159 +        create_room(&pool, "Suuri", 20).unwrap();
+      160 +
+      161 +        let filter = RoomFilter {
+      162 +            min_capacity: None,
+      163 +            max_capacity: Some(10),
+      164 +        };
+      165 +        let rooms = list_rooms(&pool,
+          +&filter).unwrap();
+      166 +
+      167 +        assert_eq!(rooms.len(), 2);
+      168 +        assert!(rooms.iter().all(|r| r.capacity <=
+          +10));
+      169 +    }
+      170 +
+      171 +    #[test]
+      172 +    fn test_room_exists() {
+      173 +        let pool = test_pool();
+      174 +
+      175 +        let room = create_room(&pool, "Huone",
+          +10).unwrap();
+      176 +
+      177 +        assert!(room_exists(&pool,
+          +RoomId(room.id)).unwrap());
+      178 +        assert!(!room_exists(&pool,
+          +RoomId(999)).unwrap());
+      179 +    }
+      180 +}
+
+⏺ Now let me add tests for the reservation repository.
+
+⏺ Update(src/reservation/repository.rs)
+  ⎿  Added 173 lines
+       99          ..reservation
+      100      })
+      101  }
+      102 +
+      103 +#[cfg(test)]
+      104 +mod tests {
+      105 +    use super::*;
+      106 +    use chrono::{Duration, Utc};
+      107 +    use diesel::r2d2::{ConnectionManager, Pool};
+      108 +    use diesel::SqliteConnection;
+      109 +    use diesel_migrations::{embed_migrations,
+          +EmbeddedMigrations, MigrationHarness};
+      110 +
+      111 +    use crate::common::error::ConflictError;
+      112 +    use crate::common::time::TimeSlot;
+      113 +    use crate::room::repository::create_room;
+      114 +    use crate::user::repository::create_user;
+      115 +    use crate::user::types::Email;
+      116 +    use crate::user::UserId;
+      117 +
+      118 +    pub const MIGRATIONS: EmbeddedMigrations =
+          +embed_migrations!("migrations");
+      119 +
+      120 +    fn test_pool() -> DbPool {
+      121 +        let manager = ConnectionManager::<SqliteCon
+          +nection>::new(":memory:");
+      122 +        let pool =
+          +Pool::builder().build(manager).unwrap();
+      123 +
+      124 +        let mut conn = pool.get().unwrap();
+      125 +
+          +conn.run_pending_migrations(MIGRATIONS).unwrap();
+      126 +
+      127 +        pool
+      128 +    }
+      129 +
+      130 +    fn create_test_validated_reservation(
+      131 +        room_id: RoomId,
+      132 +        user_id: UserId,
+      133 +        start_hours_from_now: i64,
+      134 +        duration_hours: i64,
+      135 +    ) -> ValidatedCreateReservation {
+      136 +        let start = Utc::now() +
+          +Duration::hours(start_hours_from_now);
+      137 +        let end = start +
+          +Duration::hours(duration_hours);
+      138 +        let time_slot = TimeSlot::new(start,
+          +end).unwrap();
+      139 +
+      140 +        ValidatedCreateReservation {
+      141 +            room_id,
+      142 +            user_id,
+      143 +            time_slot,
+      144 +        }
+      145 +    }
+      146 +
+      147 +    #[test]
+      148 +    fn test_create_reservation() {
+      149 +        let pool = test_pool();
+      150 +
+      151 +        let room = create_room(&pool, "Huone",
+          +10).unwrap();
+      152 +        let email =
+          +Email::parse("test@test.com").unwrap();
+      153 +        let user = create_user(&pool, &email,
+          +"Testi Käyttäjä").unwrap();
+      154 +
+      155 +        let validated =
+      156 +
+          +create_test_validated_reservation(RoomId(room.id),
+          +UserId(user.id), 1, 2);
+      157 +
+      158 +        let reservation = create_reservation(&pool,
+          + validated).unwrap();
+      159 +
+      160 +        assert_eq!(reservation.id, 1);
+      161 +        assert_eq!(reservation.room_id, room.id);
+      162 +        assert_eq!(reservation.user_id, user.id);
+      163 +        assert_eq!(reservation.status, "active");
+      164 +    }
+      165 +
+      166 +    #[test]
+      167 +    fn test_create_reservation_overlapping() {
+      168 +        let pool = test_pool();
+      169 +
+      170 +        let room = create_room(&pool, "Huone",
+          +10).unwrap();
+      171 +        let email =
+          +Email::parse("test@test.com").unwrap();
+      172 +        let user = create_user(&pool, &email,
+          +"Testi Käyttäjä").unwrap();
+      173 +
+      174 +        // Create first reservation: hours 1-3
+      175 +        let validated1 =
+      176 +
+          +create_test_validated_reservation(RoomId(room.id),
+          +UserId(user.id), 1, 2);
+      177 +        create_reservation(&pool,
+          +validated1).unwrap();
+      178 +
+      179 +        // Try to create overlapping reservation:
+          +hours 2-4
+      180 +        let validated2 =
+      181 +
+          +create_test_validated_reservation(RoomId(room.id),
+          +UserId(user.id), 2, 2);
+      182 +        let result = create_reservation(&pool,
+          +validated2);
+      183 +
+      184 +        assert!(matches!(
+      185 +            result,
+      186 +            Err(AppError::Conflict(ConflictError::O
+          +verlappingReservation))
+      187 +        ));
+      188 +    }
+      189 +
+      190 +    #[test]
+      191 +    fn test_get_reservation_by_id() {
+      192 +        let pool = test_pool();
+      193 +
+      194 +        let room = create_room(&pool, "Huone",
+          +10).unwrap();
+      195 +        let email =
+          +Email::parse("test@test.com").unwrap();
+      196 +        let user = create_user(&pool, &email,
+          +"Testi Käyttäjä").unwrap();
+      197 +
+      198 +        let validated =
+      199 +
+          +create_test_validated_reservation(RoomId(room.id),
+          +UserId(user.id), 1, 2);
+      200 +        let created = create_reservation(&pool,
+          +validated).unwrap();
+      201 +
+      202 +        let fetched = get_reservation_by_id(&pool,
+          +ReservationId(created.id)).unwrap();
+      203 +
+      204 +        assert_eq!(fetched.id, created.id);
+      205 +        assert_eq!(fetched.room_id, room.id);
+      206 +    }
+      207 +
+      208 +    #[test]
+      209 +    fn test_list_reservations_for_room() {
+      210 +        let pool = test_pool();
+      211 +
+      212 +        let room1 = create_room(&pool, "Huone 1",
+          +10).unwrap();
+      213 +        let room2 = create_room(&pool, "Huone 2",
+          +10).unwrap();
+      214 +        let email =
+          +Email::parse("test@test.com").unwrap();
+      215 +        let user = create_user(&pool, &email,
+          +"Testi Käyttäjä").unwrap();
+      216 +
+      217 +        // Create reservations for room1
+      218 +        let v1 =
+          +create_test_validated_reservation(RoomId(room1.id),
+          + UserId(user.id), 1, 1);
+      219 +        let v2 =
+          +create_test_validated_reservation(RoomId(room1.id),
+          + UserId(user.id), 3, 1);
+      220 +        create_reservation(&pool, v1).unwrap();
+      221 +        create_reservation(&pool, v2).unwrap();
+      222 +
+      223 +        // Create reservation for room2
+      224 +        let v3 =
+          +create_test_validated_reservation(RoomId(room2.id),
+          + UserId(user.id), 1, 1);
+      225 +        create_reservation(&pool, v3).unwrap();
+      226 +
+      227 +        let room1_reservations =
+          +list_reservations_for_room(&pool,
+          +RoomId(room1.id)).unwrap();
+      228 +        let room2_reservations =
+          +list_reservations_for_room(&pool,
+          +RoomId(room2.id)).unwrap();
+      229 +
+      230 +        assert_eq!(room1_reservations.len(), 2);
+      231 +        assert_eq!(room2_reservations.len(), 1);
+      232 +    }
+      233 +
+      234 +    #[test]
+      235 +    fn test_cancel_reservation() {
+      236 +        let pool = test_pool();
+      237 +
+      238 +        let room = create_room(&pool, "Huone",
+          +10).unwrap();
+      239 +        let email =
+          +Email::parse("test@test.com").unwrap();
+      240 +        let user = create_user(&pool, &email,
+          +"Testi Käyttäjä").unwrap();
+      241 +
+      242 +        let validated =
+      243 +
+          +create_test_validated_reservation(RoomId(room.id),
+          +UserId(user.id), 1, 2);
+      244 +        let reservation = create_reservation(&pool,
+          + validated).unwrap();
+      245 +
+      246 +        assert_eq!(reservation.status, "active");
+      247 +
+      248 +        let cancelled = cancel_reservation(&pool,
+          +ReservationId(reservation.id)).unwrap();
+      249 +
+      250 +        assert_eq!(cancelled.status, "cancelled");
+      251 +    }
+      252 +
+      253 +    #[test]
+      254 +    fn
+          +test_cancelled_reservation_does_not_block_new() {
+      255 +        let pool = test_pool();
+      256 +
+      257 +        let room = create_room(&pool, "Huone",
+          +10).unwrap();
+      258 +        let email =
+          +Email::parse("test@test.com").unwrap();
+      259 +        let user = create_user(&pool, &email,
+          +"Testi Käyttäjä").unwrap();
+      260 +
+      261 +        // Create and cancel a reservation
+      262 +        let validated1 =
+      263 +
+          +create_test_validated_reservation(RoomId(room.id),
+          +UserId(user.id), 1, 2);
+      264 +        let reservation = create_reservation(&pool,
+          + validated1).unwrap();
+      265 +        cancel_reservation(&pool,
+          +ReservationId(reservation.id)).unwrap();
+      266 +
+      267 +        // Create new reservation for same time
+          +slot - should succeed
+      268 +        let validated2 =
+      269 +
+          +create_test_validated_reservation(RoomId(room.id),
+          +UserId(user.id), 1, 2);
+      270 +        let new_reservation =
+          +create_reservation(&pool, validated2);
+      271 +
+      272 +        assert!(new_reservation.is_ok());
+      273 +    }
+      274 +}
+
+⏺ Now let me run the tests to verify they work.
+
+⏺ Bash(cargo test --lib)
+  ⎿ Tool use rejected with user message: I only added the basic
+    example for you in user feature so add the missing tests there
+    also
+
+⏺ I'll add the missing tests to user/repository.rs as well.
+
+⏺ Update(src/user/repository.rs)
+  ⎿  Added 25 lines
+       73          assert_eq!(user.email, "test@test.com");
+       74          assert_eq!(user.name, "Test Testson");
+       75      }
+       76 +
+       77 +    #[test]
+       78 +    fn test_get_user_by_id() {
+       79 +        let pool = test_pool();
+       80 +
+       81 +        let email =
+          +Email::parse("test@example.com").unwrap();
+       82 +        let created = create_user(&pool, &email,
+          +"Testi Käyttäjä").unwrap();
+       83 +
+       84 +        let fetched = get_user_by_id(&pool,
+          +UserId(created.id)).unwrap();
+       85 +
+       86 +        assert_eq!(fetched.id, created.id);
+       87 +        assert_eq!(fetched.email,
+          +"test@example.com");
+       88 +        assert_eq!(fetched.name, "Testi Käyttäjä");
+       89 +    }
+       90 +
+       91 +    #[test]
+       92 +    fn test_user_exists() {
+       93 +        let pool = test_pool();
+       94 +
+       95 +        let email =
+          +Email::parse("test@example.com").unwrap();
+       96 +        let user = create_user(&pool, &email,
+          +"Testi Käyttäjä").unwrap();
+       97 +
+       98 +        assert!(user_exists(&pool,
+          +UserId(user.id)).unwrap());
+       99 +        assert!(!user_exists(&pool,
+          +UserId(999)).unwrap());
+      100 +    }
+      101  }
+
+⏺ Now let me run all the tests to verify they pass.
+
+⏺ Bash(cargo test --lib 2>&1)
+  ⎿    Compiling rs2026 v0.1.0 (/Users/teemu/Development/rs2026)
+        Finished `test` profile [unoptimized + debuginfo] target(
+    s) in 0.98s
+    … +38 lines (ctrl+o to expand)
+
+
+⏺ All 20 tests pass. I've added unit tests for all three repositories:
+
+  user/repository.rs (3 tests):
+  - test_create_user - existing test
+  - test_get_user_by_id - new
+  - test_user_exists - new
+
+  room/repository.rs (7 tests):
+  - test_create_room
+  - test_create_room_capacity_too_large
+  - test_get_room_by_id
+  - test_list_rooms_no_filter
+  - test_list_rooms_with_min_capacity
+  - test_list_rooms_with_max_capacity
+  - test_room_exists
+
+  reservation/repository.rs (6 tests):
+  - test_create_reservation
+  - test_create_reservation_overlapping
+  - test_get_reservation_by_id
+  - test_list_reservations_for_room
+  - test_cancel_reservation
+  - test_cancelled_reservation_does_not_block_new
+
+  Each test module follows the same pattern with an in-memory SQLite
+  database and migrations.
+```
