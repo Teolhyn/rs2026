@@ -40,3 +40,37 @@ pub fn user_exists(pool: &DbPool, user_id: UserId) -> Result<bool, AppError> {
         .get_result(&mut conn)
         .map_err(AppError::from)
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use diesel::r2d2::{ConnectionManager, Pool};
+    use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+
+    pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
+
+    pub fn test_pool() -> DbPool {
+        let manager = ConnectionManager::<SqliteConnection>::new(":memory:");
+        let pool = Pool::builder().build(manager).unwrap();
+
+        let mut conn = pool.get().unwrap();
+        conn.run_pending_migrations(MIGRATIONS).unwrap();
+
+        pool
+    }
+
+    #[test]
+    fn test_create_user() {
+        let pool = test_pool();
+
+        let email = Email::parse("TEST@TeSt.com").unwrap();
+        let uname = "Test Testson";
+
+        let user = create_user(&pool, &email, uname).unwrap();
+
+        assert_eq!(user.id, 1);
+        assert_eq!(user.email, "test@test.com");
+        assert_eq!(user.name, "Test Testson");
+    }
+}
